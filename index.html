@@ -123,6 +123,7 @@
     <!-- 已存的记录由服务端渲染 -->
     <div id="recordsList">
           <div class="record"><span class="rtime">2026-05-24 03:07:42</span><span class="rtext">第一次Enter</span></div>
+          <div class="record"><span class="rtime">2026-05-24 03:08:14</span><span class="rtext">第二次记录</span></div>
       <!-- __RECORDS__ -->
     </div>
   </div>
@@ -144,6 +145,7 @@
       const records = listEl.querySelectorAll('.record');
       if (records.length === 0) {
         // 如果只有     <div class="record"><span class="rtime">2026-05-24 03:07:42</span><span class="rtext">第一次Enter</span></div>
+          <div class="record"><span class="rtime">2026-05-24 03:08:14</span><span class="rtext">第二次记录</span></div>
       <!-- __RECORDS__ --> 注释，没有实际记录
         const hasRecord = Array.from(listEl.children).some(
           c => c.classList && c.classList.contains('record')
