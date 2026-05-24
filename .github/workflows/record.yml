@@ -1,0 +1,48 @@
+name: Record Input
+
+on:
+  workflow_dispatch:
+    inputs:
+      value:
+        description: '输入内容'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Append record to index.html
+        run: |
+          python3 << 'PYEOF'
+          import os, html
+          from datetime import datetime
+
+          value = os.environ.get('INPUT_VALUE', '')
+          escaped = html.escape(value)
+          ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+          record = f'    <div class="record"><span class="rtime">{ts}</span><span class="rtext">{escaped}</span></div>'
+
+          with open('index.html', 'r') as f:
+              content = f.read()
+
+          content = content.replace('<!-- __RECORDS__ -->', f'{record}\n      <!-- __RECORDS__ -->')
+
+          with open('index.html', 'w') as f:
+              f.write(content)
+          PYEOF
+        env:
+          INPUT_VALUE: ${{ github.event.inputs.value }}
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || (git commit -m "Add record: ${{ github.event.inputs.value }}" && git push)

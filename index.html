@@ -3,16 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>简约示例</title>
+  <title>记录板</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: #f5f5f7;
+      color: #1d1d1f;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 60px 20px 40px;
     }
     .card {
       background: #fff;
@@ -32,9 +34,7 @@
       transition: border-color 0.2s;
       width: 240px;
     }
-    input:focus {
-      border-color: #007aff;
-    }
+    input:focus { border-color: #007aff; }
     button {
       padding: 10px 20px;
       font-size: 16px;
@@ -44,33 +44,193 @@
       border-radius: 8px;
       cursor: pointer;
       transition: background 0.2s;
+      white-space: nowrap;
     }
-    button:hover {
-      background: #0056b3;
+    button:hover { background: #0056b3; }
+    button:active { background: #004080; }
+    button:disabled { background: #999; cursor: not-allowed; }
+
+    /* 状态提示 */
+    #status {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #888;
+      min-height: 20px;
     }
-    button:active {
-      background: #004080;
+    #status.loading { color: #007aff; }
+    #status.done { color: #34c759; }
+    #status.error { color: #ff3b30; }
+
+    /* 历史记录 */
+    .records {
+      margin-top: 32px;
+      width: 100%;
+      max-width: 520px;
+    }
+    .records-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .record {
+      background: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      display: flex;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 15px;
+      animation: fadeIn 0.3s ease;
+    }
+    .record .rtime {
+      color: #888;
+      font-size: 12px;
+      font-family: "SF Mono", Menlo, monospace;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .record .rtext { color: #1d1d1f; word-break: break-all; }
+    .records-empty {
+      color: #aaa;
+      font-size: 14px;
+      text-align: center;
+      padding: 20px;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
+
   <div class="card">
     <input type="text" id="inputField" placeholder="输入点什么..." autofocus>
-    <button id="alertBtn">OK</button>
+    <button id="submitBtn">OK</button>
+  </div>
+
+  <div id="status"></div>
+
+  <div class="records" id="recordsContainer">
+    <div class="records-title">📋 历史记录</div>
+    <!-- 已存的记录由服务端渲染 -->
+    <div id="recordsList">
+      <!-- __RECORDS__ -->
+    </div>
   </div>
 
   <script>
-    const input = document.getElementById('inputField');
-    const btn = document.getElementById('alertBtn');
+    // ── 配置 ────────────────────────────────────────
+    const OWNER = 'tandaishi';
+    const REPO  = 'github-action-html-demo';
+    const PAT   = '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';
 
-    function showAlert() {
-      alert(input.value);
+    // ── DOM 引用 ────────────────────────────────────
+    const input    = document.getElementById('inputField');
+    const btn      = document.getElementById('submitBtn');
+    const statusEl = document.getElementById('status');
+    const listEl   = document.getElementById('recordsList');
+
+    // ── 读取已有的记录（服务端渲染的 .record）──────
+    function loadExistingRecords() {
+      const records = listEl.querySelectorAll('.record');
+      if (records.length === 0) {
+        // 如果只有 <!-- __RECORDS__ --> 注释，没有实际记录
+        const hasRecord = Array.from(listEl.children).some(
+          c => c.classList && c.classList.contains('record')
+        );
+        if (!hasRecord) {
+          const empty = document.createElement('div');
+          empty.className = 'records-empty';
+          empty.textContent = '还没有记录，输入内容按 Enter 吧 ✨';
+          listEl.appendChild(empty);
+        }
+      }
     }
 
-    btn.addEventListener('click', showAlert);
+    // ── 添加一条记录到页面（本地即时展示）──────────
+    function addRecordLocally(value) {
+      // 移除空状态提示
+      const empty = listEl.querySelector('.records-empty');
+      if (empty) empty.remove();
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+      const div = document.createElement('div');
+      div.className = 'record';
+      div.innerHTML = `<span class="rtime">${ts}</span><span class="rtext">${value}</span>`;
+      div.style.opacity = '0.6';  // 刚加的记录半透明，表示等待持久化
+      listEl.insertBefore(div, listEl.firstChild);
+    }
+
+    // ── 触发 GitHub Action ──────────────────────────
+    async function triggerAction(value) {
+      const url = `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/record.yml/dispatches`;
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': `Bearer ${PAT}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ref: 'main', inputs: { value } }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`GitHub API ${res.status}: ${errText}`);
+      }
+    }
+
+    // ── 提交 ────────────────────────────────────────
+    async function onSubmit() {
+      const value = input.value.trim();
+      if (!value) return;
+
+      // 禁用按钮，避免重复提交
+      btn.disabled = true;
+      statusEl.className = 'loading';
+      statusEl.textContent = '⏳ 正在提交...';
+
+      // 1. 立即本地展示
+      addRecordLocally(value);
+      input.value = '';
+      input.focus();
+
+      try {
+        // 2. 触发 Action
+        await triggerAction(value);
+        statusEl.className = 'done';
+        statusEl.textContent = '✅ 已提交，稍后刷新页面即可看到持久化结果';
+      } catch (err) {
+        statusEl.className = 'error';
+        statusEl.textContent = `❌ 提交失败：${err.message}`;
+        // 把本地那条标记为失败
+        const firstRecord = listEl.querySelector('.record');
+        if (firstRecord) firstRecord.style.opacity = '0.3';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── 事件绑定 ────────────────────────────────────
+    btn.addEventListener('click', onSubmit);
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') showAlert();
+      if (e.key === 'Enter') onSubmit();
     });
+
+    // ── 页面加载时展示已有记录 ──────────────────────
+    loadExistingRecords();
   </script>
 </body>
 </html>
