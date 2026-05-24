@@ -32,7 +32,7 @@ jobs:
           with open('index.html', 'r') as f:
               content = f.read()
 
-          content = content.replace('<!-- __RECORDS__ -->', f'{record}\n      <!-- __RECORDS__ -->')
+          content = content.replace('<!-- __RECORDS_MARKER__ -->', f'{record}\n      <!-- __RECORDS_MARKER__ -->')
 
           with open('index.html', 'w') as f:
               f.write(content)

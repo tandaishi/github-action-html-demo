@@ -50,7 +50,6 @@
     button:active { background: #004080; }
     button:disabled { background: #999; cursor: not-allowed; }
 
-    /* 状态提示 */
     #status {
       margin-top: 12px;
       font-size: 13px;
@@ -61,7 +60,6 @@
     #status.done { color: #34c759; }
     #status.error { color: #ff3b30; }
 
-    /* 历史记录 */
     .records {
       margin-top: 32px;
       width: 100%;
@@ -120,48 +118,34 @@
 
   <div class="records" id="recordsContainer">
     <div class="records-title">📋 历史记录</div>
-    <!-- 已存的记录由服务端渲染 -->
     <div id="recordsList">
-          <div class="record"><span class="rtime">2026-05-24 03:07:42</span><span class="rtext">第一次Enter</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:08:14</span><span class="rtext">第二次记录</span></div>
-      <!-- __RECORDS__ -->
+      <!-- __RECORDS_MARKER__ -->
     </div>
   </div>
 
   <script>
-    // ── 配置 ────────────────────────────────────────
     const OWNER = 'tandaishi';
     const REPO  = 'github-action-html-demo';
     const PAT   = '__PAT__';
 
-    // ── DOM 引用 ────────────────────────────────────
     const input    = document.getElementById('inputField');
     const btn      = document.getElementById('submitBtn');
     const statusEl = document.getElementById('status');
     const listEl   = document.getElementById('recordsList');
 
-    // ── 读取已有的记录（服务端渲染的 .record）──────
-    function loadExistingRecords() {
+    // 页面加载时，检查是否有服务端渲染的记录
+    function initRecords() {
       const records = listEl.querySelectorAll('.record');
       if (records.length === 0) {
-        // 如果只有     <div class="record"><span class="rtime">2026-05-24 03:07:42</span><span class="rtext">第一次Enter</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:08:14</span><span class="rtext">第二次记录</span></div>
-      <!-- __RECORDS__ --> 注释，没有实际记录
-        const hasRecord = Array.from(listEl.children).some(
-          c => c.classList && c.classList.contains('record')
-        );
-        if (!hasRecord) {
-          const empty = document.createElement('div');
-          empty.className = 'records-empty';
-          empty.textContent = '还没有记录，输入内容按 Enter 吧 ✨';
-          listEl.appendChild(empty);
-        }
+        const empty = document.createElement('div');
+        empty.className = 'records-empty';
+        empty.textContent = '还没有记录，输入内容按 Enter 吧 ✨';
+        listEl.appendChild(empty);
       }
     }
 
-    // ── 添加一条记录到页面（本地即时展示）──────────
+    // 本地立即添加一条记录
     function addRecordLocally(value) {
-      // 移除空状态提示
       const empty = listEl.querySelector('.records-empty');
       if (empty) empty.remove();
 
@@ -172,14 +156,13 @@
       const div = document.createElement('div');
       div.className = 'record';
       div.innerHTML = `<span class="rtime">${ts}</span><span class="rtext">${value}</span>`;
-      div.style.opacity = '0.6';  // 刚加的记录半透明，表示等待持久化
+      div.style.opacity = '0.6';
       listEl.insertBefore(div, listEl.firstChild);
     }
 
-    // ── 触发 GitHub Action ──────────────────────────
+    // 触发 GitHub Action
     async function triggerAction(value) {
       const url = `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/record.yml/dispatches`;
-
       const res = await fetch(url, {
         method: 'POST',
         headers: {
@@ -189,37 +172,31 @@
         },
         body: JSON.stringify({ ref: 'main', inputs: { value } }),
       });
-
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
         throw new Error(`GitHub API ${res.status}: ${errText}`);
       }
     }
 
-    // ── 提交 ────────────────────────────────────────
     async function onSubmit() {
       const value = input.value.trim();
       if (!value) return;
 
-      // 禁用按钮，避免重复提交
       btn.disabled = true;
       statusEl.className = 'loading';
       statusEl.textContent = '⏳ 正在提交...';
 
-      // 1. 立即本地展示
       addRecordLocally(value);
       input.value = '';
       input.focus();
 
       try {
-        // 2. 触发 Action
         await triggerAction(value);
         statusEl.className = 'done';
-        statusEl.textContent = '✅ 已提交，稍后刷新页面即可看到持久化结果';
+        statusEl.textContent = '✅ 已提交，稍等 30 秒后刷新页面可看到持久化结果';
       } catch (err) {
         statusEl.className = 'error';
         statusEl.textContent = `❌ 提交失败：${err.message}`;
-        // 把本地那条标记为失败
         const firstRecord = listEl.querySelector('.record');
         if (firstRecord) firstRecord.style.opacity = '0.3';
       } finally {
@@ -227,14 +204,12 @@
       }
     }
 
-    // ── 事件绑定 ────────────────────────────────────
     btn.addEventListener('click', onSubmit);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') onSubmit();
     });
 
-    // ── 页面加载时展示已有记录 ──────────────────────
-    loadExistingRecords();
+    initRecords();
   </script>
 </body>
 </html>
