@@ -21,9 +21,6 @@
       padding: 32px;
       border-radius: 12px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      display: flex;
-      gap: 12px;
-      align-items: center;
     }
     input {
       padding: 10px 14px;
@@ -35,20 +32,6 @@
       width: 240px;
     }
     input:focus { border-color: #007aff; }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #007aff;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.2s;
-      white-space: nowrap;
-    }
-    button:hover { background: #0056b3; }
-    button:active { background: #004080; }
-    button:disabled { background: #999; cursor: not-allowed; }
 
     #status {
       margin-top: 12px;
@@ -110,8 +93,7 @@
 <body>
 
   <div class="card">
-    <input type="text" id="inputField" placeholder="输入点什么..." autofocus>
-    <button id="submitBtn">OK</button>
+    <input type="text" id="inputField" placeholder="按 Enter 提交..." autofocus>
   </div>
 
   <div id="status"></div>
@@ -119,14 +101,6 @@
   <div class="records" id="recordsContainer">
     <div class="records-title">📋 历史记录</div>
     <div id="recordsList">
-          <div class="record"><span class="rtime">2026-05-24 03:13:00</span><span class="rtext">测试一下完整链路</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:17:08</span><span class="rtext">持久化测试</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:17:37</span><span class="rtext">持久化测试</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:17:58</span><span class="rtext">难道说已经成功了？</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:18:34</span><span class="rtext">再来一次试试</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:19:53</span><span class="rtext">天气真不错啊</span></div>
-          <div class="record"><span class="rtime">2026-05-24 03:23:09</span><span class="rtext">最后再试一次</span></div>
-          <div class="record"><span class="rtime">2026-05-24 04:21:40</span><span class="rtext">谭代师的测试记录</span></div>
       <!-- __RECORDS_MARKER__ -->
     </div>
   </div>
@@ -137,38 +111,9 @@
     const PAT   = '__PAT__';
 
     const input    = document.getElementById('inputField');
-    const btn      = document.getElementById('submitBtn');
     const statusEl = document.getElementById('status');
-    const listEl   = document.getElementById('recordsList');
 
-    // 页面加载时，检查是否有服务端渲染的记录
-    function initRecords() {
-      const records = listEl.querySelectorAll('.record');
-      if (records.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'records-empty';
-        empty.textContent = '还没有记录，输入内容按 Enter 吧 ✨';
-        listEl.appendChild(empty);
-      }
-    }
-
-    // 本地立即添加一条记录
-    function addRecordLocally(value) {
-      const empty = listEl.querySelector('.records-empty');
-      if (empty) empty.remove();
-
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-
-      const div = document.createElement('div');
-      div.className = 'record';
-      div.innerHTML = `<span class="rtime">${ts}</span><span class="rtext">${value}</span>`;
-      div.style.opacity = '0.6';
-      listEl.insertBefore(div, listEl.firstChild);
-    }
-
-    // 触发 GitHub Action
+    // ── 触发 GitHub Action ──────────────────────────
     async function triggerAction(value) {
       const url = `https://api.github.com/repos/${OWNER}/${REPO}/actions/workflows/record.yml/dispatches`;
       const res = await fetch(url, {
@@ -190,34 +135,27 @@
       const value = input.value.trim();
       if (!value) return;
 
-      btn.disabled = true;
+      input.disabled = true;
       statusEl.className = 'loading';
       statusEl.textContent = '⏳ 正在提交...';
-
-      addRecordLocally(value);
-      input.value = '';
-      input.focus();
 
       try {
         await triggerAction(value);
         statusEl.className = 'done';
-        statusEl.textContent = '✅ 已提交，稍等 30 秒后刷新页面可看到持久化结果';
+        statusEl.textContent = '✅ 提交成功，刷新页面可看到结果';
+        input.value = '';
       } catch (err) {
         statusEl.className = 'error';
         statusEl.textContent = `❌ 提交失败：${err.message}`;
-        const firstRecord = listEl.querySelector('.record');
-        if (firstRecord) firstRecord.style.opacity = '0.3';
       } finally {
-        btn.disabled = false;
+        input.disabled = false;
+        input.focus();
       }
     }
 
-    btn.addEventListener('click', onSubmit);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') onSubmit();
     });
-
-    initRecords();
   </script>
 </body>
 </html>
