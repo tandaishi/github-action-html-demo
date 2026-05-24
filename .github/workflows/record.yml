@@ -10,6 +10,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   record:
@@ -46,8 +48,21 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add index.html
           git diff --cached --quiet || (
-            # 用 PAT 替换 remote URL，这样 push 会触发其他 workflow
             git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/${{ github.repository }}
             git commit -m "Add record: ${{ github.event.inputs.value }}"
             git push
           )
+
+      - name: Inject PAT for deployment
+        run: sed -i "s|__PAT__|${{ secrets.PAT }}|g" index.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
